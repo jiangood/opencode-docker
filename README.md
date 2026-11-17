@@ -29,13 +29,17 @@ docker run -d \
 docker logs -f opencode-remote   # 启动日志里有配对链接
 ```
 
-可选：容器内需要 `gh`（GitHub CLI）时，再挂宿主机凭据：
+可选：容器内需要 `gh`（GitHub CLI）或 agent 推代码时，挂宿主机凭据：
 
 ```bash
-# 加一行 -v ~/.config/gh:/home/opencode/.config/gh 即可
-# 注意：容器内 opencode 用户是 UID 1000，宿主机用户 UID 不是 1000 时 hosts.yml 可能读不到，
-# 那种情况改用 -e GH_TOKEN="$(gh auth token)" 传 token 最省事
+# docker run 加这几行：
+-v ~/.config/gh:/home/opencode/.config/gh    # gh CLI 凭据（hosts.yml）
+-v ~/.gitconfig:/home/opencode/.gitconfig    # git 身份（user.name/email）+ credential helper
+-v ~/.git-credentials:/home/opencode/.git-credentials  # 仅当 git 用 credential.helper=store 时需要
 ```
+
+- 宿主机跑过 `gh auth setup-git` 的话，git push 直接复用 `~/.config/gh` 的凭据，第三行可省
+- 容器内 opencode 用户是 UID 1000，宿主机用户 UID 不是 1000 时挂载文件可能读不到，那种情况改用 `-e GH_TOKEN="$(gh auth token)"` 传 token 最省事
 
 国内网络也可以从阿里云（杭州）拉取：
 
@@ -101,5 +105,5 @@ docker stop opencode-remote                               # 停止（数据卷�
 - 远程配对会把服务器暴露到公网：流量端到端加密，密码由 opencode 自动生成
 - 配对链接一次性、5 分钟内有效，不要分享给不信任的人
 - 容器内 opencode 拥有 `/workspace` 的完整读写和 shell 执行权限，只挂载需要处理的代码目录
-- 挂载的 gh 凭据（hosts.yml）容器内 agent 可读，相当于交出钥匙，建议用最小权限 token
+- 挂载的 GitHub 凭据（hosts.yml / git-credentials）容器内 agent 可读，相当于交出钥匙，建议用最小权限 token
 - Playwright MCP 以 `--no-sandbox` 运行（容器内 Chromium 沙箱不可用），仅用于访问可信站点
