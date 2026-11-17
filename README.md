@@ -46,6 +46,7 @@ docker logs -f opencode-remote   # 启动日志里有配对链接
 - `main` 分支推送 → `latest` 标签
 - PR → 只构建不推送（验证 Dockerfile）
 - 手动触发：Actions → docker → Run workflow
+- 配置仓库 secret `GHCR_PAT`（带 `write:packages` 的 token）后 CI 优先用它推送（可创建新 package）；未配置时回退 `GITHUB_TOKEN`（只能推送已存在的 package）
 
 镜像私有可见时，运行前先登录：
 

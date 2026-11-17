@@ -26,6 +26,7 @@
 ## 工作流
 
 - **修改 → 推送 → CI 构建**：改动推到 GitHub 后，`.github/workflows/docker.yml` 自动构建 `linux/amd64` 并推 `ghcr.io/<owner>/<repo>:latest`（只保留 `latest` 标签）。PR 只构建不推送。
+- **GHCR 推送凭据**：优先用仓库 secret `GHCR_PAT`（`write:packages`，可创建新 package），未配置时回退 `GITHUB_TOKEN`（只能推送已存在的 package）。改登录逻辑时保留该回退。
 - **本地验证**：可以 `docker build .` 本地构建测试（仅 amd64），但正式分发只走 CI。
 - **运行验证**（容器起来后）：
   ```bash
