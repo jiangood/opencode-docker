@@ -16,16 +16,13 @@ OpenCode 2 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（�
 
 ## 使用
 
-容器主目录 `/home/opencode` 是**唯一挂载点**：代码工作区、OpenCode 配置、gh/git 凭据、会话数据全在它下面。宿主机准备一个目录挂上即可，只挂这一个目录：
+容器以 **root** 运行（容器是 opencode 的专用环境，不是通用宿主机），宿主数据目录无需属主对齐。容器主目录 `/home/opencode` 是**唯一挂载点**：代码工作区、OpenCode 配置、gh/git 凭据、会话数据全在它下面。宿主机准备一个目录挂上即可，只挂这一个目录：
 
 ```bash
 # 1) 宿主机准备数据目录（要处理的代码放进 workspace/ 里）
 mkdir -p ~/opencode-remote/workspace
 
-# 2) 容器用户是 UID/GID 1000，目录属主对齐（root 用户去掉 sudo）
-sudo chown -R 1000:1000 ~/opencode-remote
-
-# 3) 启动容器（把 OWNER 换成你的 GitHub 用户名/组织）
+# 2) 启动容器（把 OWNER 换成你的 GitHub 用户名/组织）
 docker run -d \
     --name opencode-remote \
     --restart unless-stopped \
@@ -56,7 +53,6 @@ mkdir -p ~/opencode-remote/.config/gh
 cp ~/.config/gh/hosts.yml ~/opencode-remote/.config/gh/
 cp ~/.gitconfig ~/opencode-remote/
 [ -f ~/.git-credentials ] && cp ~/.git-credentials ~/opencode-remote/
-sudo chown -R 1000:1000 ~/opencode-remote
 ```
 
 不想把凭据文件放进容器时，改用环境变量传 token：`docker run` 加 `-e GH_TOKEN="$(gh auth token)"`（git 推代码需在 `.gitconfig` 里配 credential helper 指向该 token，或直接给仓库 URL 带 token）。
@@ -122,6 +118,7 @@ docker stop opencode-remote                               # 停止（挂载目�
 ## 安全注意
 
 - 远程配对会把服务器暴露到公网：流量端到端加密，密码由 opencode 自动生成
+- 容器以 root 运行：挂载目录是唯一入口，不要把宿主敏感目录（如 `/`、`~/.ssh`）挂进去
 - 配对链接一次性、5 分钟内有效，不要分享给不信任的人
 - 挂载目录里的所有文件容器内 agent 都可读写（含 shell 执行权限），只放需要处理的代码和凭据
 - gh/git 凭据文件（hosts.yml / git-credentials）相当于交出钥匙，建议用最小权限 token

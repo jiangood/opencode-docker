@@ -17,8 +17,7 @@ if [ ! -e "${home}/.config/opencode/skills/ui-ux-pro-max" ]; then
     cp -a /opt/opencode/skills/ui-ux-pro-max "${home}/.config/opencode/skills/"
 fi
 
-# 工作区在主目录内自建（保证容器用户可写）；WORKDIR 就是挂载点本身，
-# docker 不会用 root 替我们建深层目录
+# 工作区在主目录内自建；WORKDIR 就是挂载点本身
 install -d "${home}/workspace"
 cd "${home}/workspace"
 
