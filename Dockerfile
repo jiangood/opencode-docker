@@ -3,7 +3,6 @@
 FROM node:22-bookworm-slim
 
 ARG TARGETARCH=amd64
-ARG PLAYWRIGHT_MCP_VERSION=latest
 ARG UIPRO_VERSION=latest
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -12,10 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HOME=/data \
     JAVA_HOME=/opt/java \
     MAVEN_HOME=/opt/maven \
-    RUSTUP_HOME=/usr/local/rustup \
-    CARGO_HOME=/usr/local/cargo \
-    PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright \
-    PATH=/opt/java/bin:/opt/maven/bin:/usr/local/cargo/bin:/usr/local/bin:$PATH
+    PATH=/opt/java/bin:/opt/maven/bin:/usr/local/bin:$PATH
 
 # 以 root 运行（容器是 opencode 的专用环境，宿主挂载目录无需属主对齐），
 # HOME 指向挂载点，配置/会话/日志全部落在挂载目录里
@@ -92,9 +88,7 @@ RUN set -eux; \
     { \
         echo 'export JAVA_HOME=/opt/java'; \
         echo 'export MAVEN_HOME=/opt/maven'; \
-        echo 'export RUSTUP_HOME=/usr/local/rustup'; \
-        echo 'export CARGO_HOME=/usr/local/cargo'; \
-        echo 'export PATH="/opt/java/bin:/opt/maven/bin:/usr/local/cargo/bin:$PATH"'; \
+        echo 'export PATH="/opt/java/bin:/opt/maven/bin:$PATH"'; \
     } > /etc/profile.d/90-opencode-tools.sh
 
 # Java 21 (Eclipse Temurin)，仅支持 amd64
@@ -120,26 +114,6 @@ RUN set -eux; \
     tar -xzf /tmp/maven.tar.gz -C /opt/maven --strip-components=1; \
     rm -f /tmp/maven.tar.gz; \
     mvn -v
-
-# Rust 工具链（官方 rustup），安装到 /usr/local/rustup 与 /usr/local/cargo（主目录之外）
-RUN set -eux; \
-    case "${TARGETARCH}" in \
-        amd64) ;; \
-        *) echo "unsupported arch: ${TARGETARCH}" >&2; exit 1 ;; \
-    esac; \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-        | sh -s -- -y --profile minimal --default-toolchain stable --component rustfmt,clippy; \
-    chmod -R a+rX /usr/local/rustup /usr/local/cargo; \
-    rustc -V; \
-    cargo -V
-
-# Playwright MCP + 浏览器：用 MCP 自带的 playwright 版本下载匹配的 Chromium
-RUN set -eux; \
-    npm install -g "@playwright/mcp@${PLAYWRIGHT_MCP_VERSION}"; \
-    cd /usr/local/lib/node_modules/@playwright/mcp; \
-    npx playwright install --with-deps chromium; \
-    chmod -R 755 /opt/ms-playwright; \
-    test -x /usr/local/bin/playwright-mcp
 
 # 安装 OpenCode 2（官方 v2 安装脚本）。注意：默认安装脚本只装 OpenCode 1，
 # 远程配对（opencode pair/service）是 OpenCode 2 的命令，必须走 /v2/install。

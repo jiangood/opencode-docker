@@ -9,10 +9,9 @@ OpenCode 2 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（�
 | 分类 | 内容 |
 |---|---|---|
 | 运行时 | OpenCode 2（官方 v2 安装脚本）、Node 22、Java 21 (Temurin)、Python 3、git、gh（GitHub CLI） |
-| 构建与语言工具链 | Maven 3.9、Rust stable（rustup/cargo/rustc/rustfmt/clippy）、`build-essential`/`cmake`/`pkg-config`/`libssl-dev`、`python3-pip`/`python3-venv` |
+| 构建与语言工具链 | Maven 3.9、`build-essential`/`cmake`/`pkg-config`/`libssl-dev`、`python3-pip`/`python3-venv` |
 | 常用工具 | ripgrep、jq、curl、wget、ssh、unzip/zip/xz、file、vim/nano、tmux、lsof/strace 等 |
 | 远程 | OpenTunnel 端到端加密配对，容器不发布任何端口 |
-| 浏览器 | Playwright MCP + Chromium（headless，`--no-sandbox`），可截图/自动化 |
 | 中文字体 | Noto Sans CJK SC + Noto Color Emoji，构建时用 `fc-match` 断言生效，截图不会出现方块/乱码 |
 | 技能 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)（Dockerfile 从上游 CLI 安装） |
 
@@ -97,10 +96,10 @@ docker login ghcr.io -u <用户名>
 
 ```
 opencode-docker/
-├── Dockerfile              # 全部依赖从上游构建（含 Playwright 浏览器、中文字体、ui-ux-pro-max、开发工具链）
+├── Dockerfile              # 全部依赖从上游构建（含中文字体、ui-ux-pro-max、开发工具链）
 ├── entrypoint.sh           # 合并内置默认 → 启动共享服务 → 自动远程配对 → 日志保活
 ├── config/
-│   └── opencode.json       # Playwright MCP 配置（构建期存 /opt/opencode/defaults）
+│   └── opencode.json       # 默认配置（构建期存 /opt/opencode/defaults）
 ├── scripts/pair.sh         # 重新生成配对链接
 └── .github/workflows/docker.yml
 ```
@@ -111,8 +110,8 @@ opencode-docker/
 docker exec -it opencode-remote bash                     # 进容器
 docker exec opencode-remote opencode auth login      # 登录模型提供商
 docker exec opencode-remote opencode service status  # 服务状态
-docker exec opencode-remote playwright-mcp --help | head -5  # 验证 Playwright MCP
-docker exec opencode-remote ls /opt/ms-playwright            # 验证浏览器已下载
+docker exec opencode-remote opencode --version           # 验证 OpenCode
+docker exec opencode-remote mvn -v | head -2             # 验证 Maven
 docker exec opencode-remote fc-match sans-serif:lang=zh-cn  # 验证中文字体
 docker stop opencode-remote                               # 停止（挂载目录保留）
 ```
@@ -124,4 +123,3 @@ docker stop opencode-remote                               # 停止（挂载目�
 - 配对链接一次性、5 分钟内有效，不要分享给不信任的人
 - 挂载目录里的所有文件容器内 agent 都可读写（含 shell 执行权限），只放需要处理的代码和凭据
 - gh/git 凭据文件（hosts.yml / git-credentials）相当于交出钥匙，建议用最小权限 token
-- Playwright MCP 以 `--no-sandbox` 运行（容器内 Chromium 沙箱不可用），仅用于访问可信站点

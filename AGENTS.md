@@ -5,10 +5,10 @@
 ## 项目结构
 
 ```
-├── Dockerfile              # 全部依赖从上游构建（含 Playwright 浏览器、中文字体、ui-ux-pro-max、开发工具链）
+├── Dockerfile              # 全部依赖从上游构建（含中文字体、ui-ux-pro-max、开发工具链）
 ├── entrypoint.sh           # 合并内置默认 → 启动共享服务 → 自动远程配对 → 日志保活
 ├── config/
-│   └── opencode.json       # Playwright MCP 配置（构建期存 /opt/opencode/defaults，启动时合并进主目录）
+│   └── opencode.json       # 默认配置（构建期存 /opt/opencode/defaults，启动时合并进主目录）
 └── scripts/pair.sh         # 重新生成配对链接
 ```
 
@@ -22,7 +22,6 @@
 6. **以 root 运行**：容器是 opencode 的专用环境（不是通用宿主机），直接 root 运行，宿主挂载目录无需属主对齐；`ENV HOME=/data` 让 root 的主目录指向挂载点，配置/会话/日志全部落在挂载目录里。
 7. **中文字体必须真正生效**：`/etc/fonts/conf.d/99-zh-cn-noto.conf` 为 zh 显式优先 Noto Sans CJK SC，且构建时用 `fc-match sans-serif:lang=zh-cn` 断言匹配结果。改字体相关配置后保留/更新该断言。
 8. **不发布任何端口**：远程访问只走 OpenTunnel 端到端加密隧道，服务只监听容器内 `127.0.0.1:4096`，密码由 opencode 自动生成。
-9. **Playwright MCP 以 `--no-sandbox` 运行**：容器内 Chromium 沙箱不可用，这是预期行为，不要"修复"它。
 
 ## 工作流
 
@@ -33,8 +32,8 @@
 - **运行验证**（容器起来后）：
   ```bash
   docker logs -f opencode-remote                                  # 启动日志里有配对链接
-  docker exec opencode-remote playwright-mcp --help | head -5    # Playwright MCP
-  docker exec opencode-remote ls /opt/ms-playwright              # 浏览器已下载
+  docker exec opencode-remote opencode --version                  # OpenCode 版本
+  docker exec opencode-remote mvn -v | head -2                    # Maven
   docker exec opencode-remote fc-match sans-serif:lang=zh-cn     # 中文字体
   ./scripts/pair.sh                                               # 重新生成配对链接（一次性、5 分钟有效）
   ```
