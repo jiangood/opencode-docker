@@ -26,6 +26,7 @@
 ## 工作流
 
 - **修改 → 推送 → CI 构建**：改动推到 GitHub 后，`.github/workflows/docker.yml` 自动构建 `linux/amd64` 并推 `ghcr.io/<owner>/<repo>:latest`（只保留 `latest` 标签）。PR 只构建不推送。
+- **阿里云镜像同步**：配置 secret `ALIYUN_PASSWORD` 后同时推 `registry.cn-hangzhou.aliyuncs.com/jiangood/opencode-docker:latest`（账号 `hustme`，参考 docker-admin）；未配置时跳过阿里云，不能因此让 CI 失败。
 - **GHCR 推送凭据**：优先用仓库 secret `GHCR_PAT`（`write:packages`），未配置时回退 `GITHUB_TOKEN`（需 `packages: write`）。本仓库的 GHCR package 已由 CI 首次推送创建并关联本仓库，`GITHUB_TOKEN` 可直接推送。改登录逻辑时保留该回退。
 - **本地验证**：可以 `docker build .` 本地构建测试（仅 amd64），但正式分发只走 CI。
 - **运行验证**（容器起来后）：
