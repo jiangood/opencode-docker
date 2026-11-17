@@ -41,7 +41,7 @@ docker compose logs -f      # 启动日志里有配对链接
 
 ## 构建（GitHub Actions）
 
-推送到 GitHub 后，`.github/workflows/docker.yml` 自动构建 `linux/amd64` + `linux/arm64` 多架构镜像并推送到 `ghcr.io/<owner>/<repo>`：
+推送到 GitHub 后，`.github/workflows/docker.yml` 自动构建 `linux/amd64` 镜像并推送到 `ghcr.io/<owner>/<repo>`：
 
 - `main` 分支推送 → `latest`、分支名、sha 标签
 - 打 `v*` 标签 → 语义化版本标签

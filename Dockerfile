@@ -60,11 +60,10 @@ EOF
 RUN fc-cache -f >/dev/null 2>&1 \
     && fc-match sans-serif:lang=zh-cn | grep -qi "Noto Sans CJK SC"
 
-# Java 21 (Eclipse Temurin)，按目标架构下载
+# Java 21 (Eclipse Temurin)，仅支持 amd64
 RUN set -eux; \
     case "${TARGETARCH}" in \
         amd64) jarch=x64 ;; \
-        arm64) jarch=aarch64 ;; \
         *) echo "unsupported arch: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     mkdir -p /opt/java; \
