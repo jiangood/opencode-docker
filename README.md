@@ -1,6 +1,6 @@
 # opencode-docker
 
-OpenCode 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（端到端加密），手机 App / 桌面 App 扫码或粘贴链接即用。
+OpenCode 2 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（端到端加密），手机 App / 桌面 App 扫码或粘贴链接即用。
 
 镜像由 **GitHub Actions** 构建推送到 GHCR，本机只负责 `pull` 和运行。
 
@@ -8,7 +8,7 @@ OpenCode 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（端
 
 | 分类 | 内容 |
 |---|---|
-| 运行时 | Node 22、Java 21 (Temurin)、Python 3、git、gh（GitHub CLI） |
+| 运行时 | OpenCode 2（官方 v2 安装脚本）、Node 22、Java 21 (Temurin)、Python 3、git、gh（GitHub CLI） |
 | 远程 | OpenTunnel 端到端加密配对，容器不发布任何端口 |
 | 浏览器 | Playwright MCP + Chromium（headless，`--no-sandbox`），可截图/自动化 |
 | 中文字体 | Noto Sans CJK SC + Noto Color Emoji，构建时用 `fc-match` 断言生效，截图不会出现方块/乱码 |
@@ -16,40 +16,60 @@ OpenCode 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（端
 
 ## 使用
 
+容器主目录 `/home/opencode` 是**唯一挂载点**：代码工作区、OpenCode 配置、gh/git 凭据、会话数据全在它下面。宿主机准备一个目录挂上即可，只挂这一个目录：
+
 ```bash
-# 拉取并启动（把 OWNER 换成你的 GitHub 用户名/组织，/path/to/code 换成实际代码目录）
+# 1) 宿主机准备数据目录（要处理的代码放进 workspace/ 里）
+mkdir -p ~/opencode-remote/workspace
+
+# 2) 容器用户是 UID/GID 1000，目录属主对齐（root 用户去掉 sudo）
+sudo chown -R 1000:1000 ~/opencode-remote
+
+# 3) 启动容器（把 OWNER 换成你的 GitHub 用户名/组织）
 docker run -d \
     --name opencode-remote \
     --restart unless-stopped \
-    -v /path/to/code:/workspace \
-    -v opencode-data:/home/opencode/.local/share/opencode \
-    --workdir /workspace \
+    -v ~/opencode-remote:/home/opencode \
     ghcr.io/OWNER/opencode-docker:latest
 
 docker logs -f opencode-remote   # 启动日志里有配对链接
 ```
 
-可选：容器内需要 `gh`（GitHub CLI）或 agent 推代码时，挂宿主机凭据：
+挂载目录里的内容：
 
-```bash
-# docker run 加这几行：
--v ~/.config/gh:/home/opencode/.config/gh    # gh CLI 凭据（hosts.yml）
--v ~/.gitconfig:/home/opencode/.gitconfig    # git 身份（user.name/email）+ credential helper
--v ~/.git-credentials:/home/opencode/.git-credentials  # 仅当 git 用 credential.helper=store 时需要
+```
+~/opencode-remote/           ← 挂到 /home/opencode（容器主目录）
+├── workspace/               # 代码工作区（默认工作目录，把代码放这里）
+├── .config/opencode/        # OpenCode 配置 + 技能（内置默认值首次启动自动补齐，已有文件不覆盖）
+├── .local/share/opencode/   # 会话、数据库、日志（自动生成）
+├── .config/gh/hosts.yml     # 可选：gh CLI 凭据
+├── .gitconfig               # 可选：git 身份
+└── .git-credentials         # 可选：git 凭据（credential.helper=store 时需要）
 ```
 
-- 宿主机跑过 `gh auth setup-git` 的话，git push 直接复用 `~/.config/gh` 的凭据，第三行可省
-- 容器内 opencode 用户是 UID 1000，宿主机用户 UID 不是 1000 时挂载文件可能读不到，那种情况改用 `-e GH_TOKEN="$(gh auth token)"` 传 token 最省事
+### 复用宿主机 gh/git 凭据（可选）
 
-国内网络也可以从阿里云（杭州）拉取：
+容器内需要用 `gh`（GitHub CLI）或 agent 推代码时，把凭据**复制**进挂载目录（复制后改动容器不感知，改完需重启容器）：
+
+```bash
+mkdir -p ~/opencode-remote/.config/gh
+cp ~/.config/gh/hosts.yml ~/opencode-remote/.config/gh/
+cp ~/.gitconfig ~/opencode-remote/
+[ -f ~/.git-credentials ] && cp ~/.git-credentials ~/opencode-remote/
+sudo chown -R 1000:1000 ~/opencode-remote
+```
+
+不想把凭据文件放进容器时，改用环境变量传 token：`docker run` 加 `-e GH_TOKEN="$(gh auth token)"`（git 推代码需在 `.gitconfig` 里配 credential helper 指向该 token，或直接给仓库 URL 带 token）。
+
+### 国内网络拉取（阿里云杭州）
 
 ```bash
 docker pull registry.cn-hangzhou.aliyuncs.com/jiangood/opencode-docker:latest
-# 阿里云仓库默认私有，需先登录：
+# 阿里云仓库私有，需先登录：
 docker login registry.cn-hangzhou.aliyuncs.com -u <阿里云账号>
 ```
 
-链接过期后重新生成：
+### 链接过期后重新生成
 
 ```bash
 ./scripts/pair.sh           # 容器内 opencode pair --remote --yes
@@ -80,12 +100,11 @@ docker login ghcr.io -u <用户名>
 ```
 opencode-docker/
 ├── Dockerfile              # 全部依赖从上游构建（含 Playwright 浏览器、中文字体、ui-ux-pro-max）
-├── entrypoint.sh           # 启动共享服务 → 自动远程配对 → 日志保活
+├── entrypoint.sh           # 合并内置默认 → 启动共享服务 → 自动远程配对 → 日志保活
 ├── config/
-│   └── opencode.json       # Playwright MCP 配置
+│   └── opencode.json       # Playwright MCP 配置（构建期存 /opt/opencode/defaults）
 ├── scripts/pair.sh         # 重新生成配对链接
-├── .github/workflows/docker.yml
-└── workspace/              # 默认工作区（挂载点）
+└── .github/workflows/docker.yml
 ```
 
 ## 常用操作
@@ -97,13 +116,13 @@ docker exec opencode-remote opencode service status  # 服务状态
 docker exec opencode-remote playwright-mcp --help | head -5  # 验证 Playwright MCP
 docker exec opencode-remote ls /opt/ms-playwright            # 验证浏览器已下载
 docker exec opencode-remote fc-match sans-serif:lang=zh-cn  # 验证中文字体
-docker stop opencode-remote                               # 停止（数据卷保留）
+docker stop opencode-remote                               # 停止（挂载目录保留）
 ```
 
 ## 安全注意
 
 - 远程配对会把服务器暴露到公网：流量端到端加密，密码由 opencode 自动生成
 - 配对链接一次性、5 分钟内有效，不要分享给不信任的人
-- 容器内 opencode 拥有 `/workspace` 的完整读写和 shell 执行权限，只挂载需要处理的代码目录
-- 挂载的 GitHub 凭据（hosts.yml / git-credentials）容器内 agent 可读，相当于交出钥匙，建议用最小权限 token
+- 挂载目录里的所有文件容器内 agent 都可读写（含 shell 执行权限），只放需要处理的代码和凭据
+- gh/git 凭据文件（hosts.yml / git-credentials）相当于交出钥匙，建议用最小权限 token
 - Playwright MCP 以 `--no-sandbox` 运行（容器内 Chromium 沙箱不可用），仅用于访问可信站点
