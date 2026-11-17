@@ -20,6 +20,7 @@
 - 运行时：Node.js 22、Java 21 (Temurin)、Python 3、`git`、`gh`
 - 构建与语言工具：Maven、`build-essential`/`cmake`/`pkg-config`/`libssl-dev`、`python3-pip`/`python3-venv`
 - 常用工具：`ripgrep`、`jq`、`curl`、`wget`、`ssh`、`unzip`/`zip`/`xz-utils`、`file`、`vim`/`nano`、`tmux`、`lsof`/`strace` 等
+- 浏览器：Playwright MCP + Chromium（headless，`--no-sandbox`），浏览器资源位于 `/opt/ms-playwright`
 - 中文字体：Noto Sans CJK SC / Noto Color Emoji
 
 ## 使用提示

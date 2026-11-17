@@ -3,6 +3,7 @@
 FROM node:22-bookworm-slim
 
 ARG TARGETARCH=amd64
+ARG PLAYWRIGHT_MCP_VERSION=latest
 ARG UIPRO_VERSION=latest
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -11,6 +12,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HOME=/data \
     JAVA_HOME=/opt/java \
     MAVEN_HOME=/opt/maven \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright \
     PATH=/opt/java/bin:/opt/maven/bin:/usr/local/bin:$PATH
 
 # 以 root 运行（容器是 opencode 的专用环境，宿主挂载目录无需属主对齐），
@@ -114,6 +116,14 @@ RUN set -eux; \
     tar -xzf /tmp/maven.tar.gz -C /opt/maven --strip-components=1; \
     rm -f /tmp/maven.tar.gz; \
     mvn -v
+
+# Playwright MCP + 浏览器：用 MCP 自带的 playwright 版本下载匹配的 Chromium
+RUN set -eux; \
+    npm install -g "@playwright/mcp@${PLAYWRIGHT_MCP_VERSION}"; \
+    cd /usr/local/lib/node_modules/@playwright/mcp; \
+    npx playwright install --with-deps chromium; \
+    chmod -R 755 /opt/ms-playwright; \
+    test -x /usr/local/bin/playwright-mcp
 
 # 安装 OpenCode 2（官方 v2 安装脚本）。注意：默认安装脚本只装 OpenCode 1，
 # 远程配对（opencode pair/service）是 OpenCode 2 的命令，必须走 /v2/install。
