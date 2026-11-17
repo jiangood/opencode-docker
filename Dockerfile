@@ -109,8 +109,10 @@ RUN set -eux; \
     dst=/home/opencode/.config/opencode/skills/ui-ux-pro-max; \
     mkdir -p /home/opencode/.config/opencode/skills; \
     if [ "${src}" != "${dst}" ]; then cp -a "${src}" "${dst}"; fi; \
-    rm -rf /home/opencode/.opencode /home/opencode/.agents; \
-    test -f "${dst}/SKILL.md"
+    # 只清理 init 写入的技能目录；.opencode/bin 是 opencode 二进制（官方安装脚本装在这里），绝不能删
+    rm -rf /home/opencode/.opencode/skills /home/opencode/.agents; \
+    test -f "${dst}/SKILL.md"; \
+    test -x /home/opencode/.opencode/bin/opencode
 
 # 配置：opencode.json（含 Playwright MCP）
 COPY --chown=opencode:opencode config/ /home/opencode/.config/opencode/
