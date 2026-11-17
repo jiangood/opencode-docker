@@ -24,7 +24,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          # 优先用 PAT（可创建/推送 package）；未配置时回退 GITHUB_TOKEN（仅能推送已存在的 package）
+          # 优先用 PAT；未配置时回退 GITHUB_TOKEN（本仓库 package 已由 CI 创建并关联，可直接推送）
           password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Docker metadata
