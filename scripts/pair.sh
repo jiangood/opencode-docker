@@ -3,4 +3,4 @@
 # 用法: ./scripts/pair.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
-docker compose exec opencode opencode pair --remote --yes
+docker exec opencode-remote opencode pair --remote --yes

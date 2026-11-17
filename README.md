@@ -13,20 +13,20 @@ OpenCode 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（端
 | 浏览器 | Playwright MCP + Chromium（headless，`--no-sandbox`），可截图/自动化 |
 | 中文字体 | Noto Sans CJK SC + Noto Color Emoji，构建时用 `fc-match` 断言生效，截图不会出现方块/乱码 |
 | 技能 | [ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)（Dockerfile 从上游 CLI 安装） |
-| 命令 | `/commit` `/review` `/security` `/test` `/explain` `/fix` `/refactor` `/doc` |
 
 ## 使用
 
 ```bash
-# 1. 修改 docker-compose.yml 里的镜像地址（把 OWNER 换成你的 GitHub 用户名/组织）
-#    image: ghcr.io/OWNER/opencode-docker:latest
+# 拉取并启动（把 OWNER 换成你的 GitHub 用户名/组织，/path/to/code 换成实际代码目录）
+docker run -d \
+    --name opencode-remote \
+    --restart unless-stopped \
+    -v /path/to/code:/workspace \
+    -v opencode-data:/home/opencode/.local/share/opencode \
+    --workdir /workspace \
+    ghcr.io/OWNER/opencode-docker:latest
 
-# 2. 修改工作区挂载指向你的代码目录
-#    - /path/to/code:/workspace
-
-# 3. 拉取并启动
-docker compose up -d
-docker compose logs -f      # 启动日志里有配对链接
+docker logs -f opencode-remote   # 启动日志里有配对链接
 ```
 
 链接过期后重新生成：
@@ -41,10 +41,9 @@ docker compose logs -f      # 启动日志里有配对链接
 
 ## 构建（GitHub Actions）
 
-推送到 GitHub 后，`.github/workflows/docker.yml` 自动构建 `linux/amd64` 镜像并推送到 `ghcr.io/<owner>/<repo>`：
+推送到 GitHub 后，`.github/workflows/docker.yml` 自动构建 `linux/amd64` 镜像并推送到 `ghcr.io/<owner>/<repo>:latest`（只保留 `latest` 标签）：
 
-- `main` 分支推送 → `latest`、分支名、sha 标签
-- 打 `v*` 标签 → 语义化版本标签
+- `main` 分支推送 → `latest` 标签
 - PR → 只构建不推送（验证 Dockerfile）
 - 手动触发：Actions → docker → Run workflow
 
@@ -59,26 +58,24 @@ docker login ghcr.io -u <用户名>
 ```
 opencode-docker/
 ├── Dockerfile              # 全部依赖从上游构建（含 Playwright 浏览器、中文字体、ui-ux-pro-max）
-├── docker-compose.yml      # 拉取 GHCR 镜像运行，无端口发布
 ├── entrypoint.sh           # 启动共享服务 → 自动远程配对 → 日志保活
 ├── config/
-│   ├── opencode.json       # Playwright MCP 配置
-│   └── commands/*.md       # 8 个常用自定义命令
+│   └── opencode.json       # Playwright MCP 配置
 ├── scripts/pair.sh         # 重新生成配对链接
 ├── .github/workflows/docker.yml
-└── workspace/              # 默认工作区（compose 挂载点）
+└── workspace/              # 默认工作区（挂载点）
 ```
 
 ## 常用操作
 
 ```bash
-docker compose exec opencode bash                     # 进容器
-docker compose exec opencode opencode auth login      # 登录模型提供商
-docker compose exec opencode opencode service status  # 服务状态
-docker compose exec opencode playwright-mcp --help | head -5  # 验证 Playwright MCP
-docker compose exec opencode ls /opt/ms-playwright            # 验证浏览器已下载
-docker compose exec opencode fc-match sans-serif:lang=zh-cn  # 验证中文字体
-docker compose down                                   # 停止（数据卷保留）
+docker exec -it opencode-remote bash                     # 进容器
+docker exec opencode-remote opencode auth login      # 登录模型提供商
+docker exec opencode-remote opencode service status  # 服务状态
+docker exec opencode-remote playwright-mcp --help | head -5  # 验证 Playwright MCP
+docker exec opencode-remote ls /opt/ms-playwright            # 验证浏览器已下载
+docker exec opencode-remote fc-match sans-serif:lang=zh-cn  # 验证中文字体
+docker stop opencode-remote                               # 停止（数据卷保留）
 ```
 
 ## 安全注意

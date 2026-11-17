@@ -80,11 +80,20 @@ RUN set -eux; \
     chmod -R 755 /opt/ms-playwright; \
     test -x /usr/local/bin/playwright-mcp
 
-# 非 root 用户，UID/GID 与宿主机对齐
-RUN groupadd -g "${GID}" opencode \
-    && useradd -m -u "${UID}" -g "${GID}" -s /bin/bash opencode \
-    && mkdir -p /workspace \
-    && chown opencode:opencode /workspace
+# 非 root 用户，UID/GID 与宿主机对齐：基础镜像的 node 用户已占 UID/GID 1000
+RUN set -eux; \
+    if [ "${UID}" = "1000" ] && [ "${GID}" = "1000" ]; then \
+        usermod -l opencode node; \
+        groupmod -n opencode node; \
+        usermod -d /home/opencode -s /bin/bash opencode; \
+    else \
+        groupadd -g "${GID}" opencode; \
+        useradd -m -u "${UID}" -g "${GID}" -s /bin/bash opencode; \
+    fi; \
+    mkdir -p /home/opencode /workspace; \
+    rm -rf /home/node; \
+    chown opencode:opencode /home/opencode /workspace; \
+    id opencode
 
 USER opencode
 WORKDIR /home/opencode
@@ -103,7 +112,7 @@ RUN set -eux; \
     rm -rf /home/opencode/.opencode /home/opencode/.agents; \
     test -f "${dst}/SKILL.md"
 
-# 配置：opencode.json（含 Playwright MCP）+ 自定义命令
+# 配置：opencode.json（含 Playwright MCP）
 COPY --chown=opencode:opencode config/ /home/opencode/.config/opencode/
 
 RUN mkdir -p /home/opencode/.local/share/opencode

@@ -13,6 +13,6 @@ echo "生成远程配对链接 (OpenTunnel, 端到端加密, 链接一次性、5
 opencode pair --remote --yes
 
 echo ""
-echo "重新生成配对链接: docker compose exec opencode opencode pair --remote --yes"
+echo "重新生成配对链接: docker exec opencode-remote opencode pair --remote --yes"
 # 后台服务是 detached 进程，用日志 tail 作为前台保活进程
 exec tail -n 50 -F /home/opencode/.local/share/opencode/log/opencode.log
