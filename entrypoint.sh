@@ -7,10 +7,16 @@ set -euo pipefail
 
 home=/home/opencode
 
-# 合并镜像内置默认内容（配置 + 技能），用户目录里已有的文件一律不动
+# 合并镜像内置默认内容（配置 + 技能 + 容器说明），用户目录里已有的文件一律不动
 install -d -m 700 "${home}/.config/opencode"
 if [ ! -f "${home}/.config/opencode/opencode.json" ]; then
     install -m 644 /opt/opencode/defaults/opencode.json "${home}/.config/opencode/opencode.json"
+fi
+if [ -f /opt/opencode/defaults/AGENTS.md ] && [ ! -f "${home}/.config/opencode/AGENTS.md" ]; then
+    install -m 644 /opt/opencode/defaults/AGENTS.md "${home}/.config/opencode/AGENTS.md"
+fi
+if [ -f /opt/opencode/defaults/AGENTS.md ] && [ ! -f "${home}/AGENTS.md" ]; then
+    install -m 644 /opt/opencode/defaults/AGENTS.md "${home}/AGENTS.md"
 fi
 if [ ! -e "${home}/.config/opencode/skills/ui-ux-pro-max" ]; then
     install -d -m 755 "${home}/.config/opencode/skills"
