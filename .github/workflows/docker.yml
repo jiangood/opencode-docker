@@ -58,7 +58,8 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          platforms: linux/amd64
+          # 不传 platforms：单平台 amd64 直接推 Docker schema2 manifest（阿里云个人版仓库不支持 OCI manifest）；
+          # amd64-only 由 Dockerfile 内的 TARGETARCH 断言保证
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.tags.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
