@@ -17,9 +17,9 @@
 1. **镜像构建不依赖本机文件**：Dockerfile 里所有依赖都从上游安装（apt 官方源、npm 官方包、官方安装脚本、上游 CLI），不要 `COPY` 本机产物（`config/` 目录除外，它是镜像内置默认值）。
 2. **仅支持 amd64**：`TARGETARCH` 为 `amd64`。任何按架构选择下载物的逻辑（如 JDK 用 `x64`）遇到非 amd64 架构要显式报错退出。
 3. **OpenCode 2 必须走 `/v2/install` 安装**：默认安装脚本只装 OpenCode 1 且显式拒绝 2.x；远程配对（`opencode pair`/`service`/`api`）是 v2 命令。v2 安装脚本在 `set -u` 下无条件读 `$SHELL`，构建时必须显式传 `SHELL=/bin/bash`。装完把二进制移到 `/usr/local/bin/opencode`（主目录之外），不要依赖 `~/.opencode/bin`。
-4. **单一挂载点 `/home/opencode`**：容器主目录可被宿主目录**整体覆盖**，因此二进制（`/usr/local/bin/opencode`）与内置默认内容（`/opt/opencode/defaults/`、`/opt/opencode/skills/`）都必须在主目录之外，由 entrypoint 启动时合并进主目录——**只补缺失，不覆盖用户文件**。
-5. **WORKDIR 是挂载点本身（`/home/opencode`）**：宿主目录运行时整体覆盖主目录，WORKDIR 若落在深层路径（如 `.../workspace`）会被宿主目录挂载隐藏。工作区 `workspace/` 由 entrypoint 在主目录内自建。
-6. **以 root 运行**：容器是 opencode 的专用环境（不是通用宿主机），直接 root 运行，宿主挂载目录无需属主对齐；`ENV HOME=/home/opencode` 让 root 的主目录指向挂载点，配置/会话/日志全部落在挂载目录里。
+4. **单一挂载点 `/data`**：容器主目录可被宿主目录**整体覆盖**，因此二进制（`/usr/local/bin/opencode`）与内置默认内容（`/opt/opencode/defaults/`、`/opt/opencode/skills/`）都必须在主目录之外，由 entrypoint 启动时合并进主目录——**只补缺失，不覆盖用户文件**。
+5. **WORKDIR 是挂载点本身（`/data`）**：宿主目录运行时整体覆盖主目录，WORKDIR 若落在深层路径（如 `.../workspace`）会被宿主目录挂载隐藏。工作区 `workspace/` 由 entrypoint 在主目录内自建。
+6. **以 root 运行**：容器是 opencode 的专用环境（不是通用宿主机），直接 root 运行，宿主挂载目录无需属主对齐；`ENV HOME=/data` 让 root 的主目录指向挂载点，配置/会话/日志全部落在挂载目录里。
 7. **中文字体必须真正生效**：`/etc/fonts/conf.d/99-zh-cn-noto.conf` 为 zh 显式优先 Noto Sans CJK SC，且构建时用 `fc-match sans-serif:lang=zh-cn` 断言匹配结果。改字体相关配置后保留/更新该断言。
 8. **不发布任何端口**：远程访问只走 OpenTunnel 端到端加密隧道，服务只监听容器内 `127.0.0.1:4096`，密码由 opencode 自动生成。
 9. **Playwright MCP 以 `--no-sandbox` 运行**：容器内 Chromium 沙箱不可用，这是预期行为，不要"修复"它。

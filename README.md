@@ -18,7 +18,7 @@ OpenCode 2 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（�
 
 ## 使用
 
-容器以 **root** 运行（容器是 opencode 的专用环境，不是通用宿主机），宿主数据目录无需属主对齐。容器主目录 `/home/opencode` 是**唯一挂载点**：代码工作区、OpenCode 配置、gh/git 凭据、会话数据全在它下面。宿主机准备一个目录挂上即可，只挂这一个目录：
+容器以 **root** 运行（容器是 opencode 的专用环境，不是通用宿主机），宿主数据目录无需属主对齐。容器主目录 `/data` 是**唯一挂载点**：代码工作区、OpenCode 配置、gh/git 凭据、会话数据全在它下面。宿主机准备一个目录挂上即可，只挂这一个目录：
 
 ```bash
 # 1) 宿主机准备数据目录（要处理的代码放进 workspace/ 里）
@@ -28,7 +28,7 @@ mkdir -p ~/opencode-remote/workspace
 docker run -d \
     --name opencode-remote \
     --restart unless-stopped \
-    -v ~/opencode-remote:/home/opencode \
+    -v ~/opencode-remote:/data \
     ghcr.io/OWNER/opencode-docker:latest
 
 docker logs -f opencode-remote   # 启动日志里有配对链接
@@ -37,7 +37,7 @@ docker logs -f opencode-remote   # 启动日志里有配对链接
 挂载目录里的内容：
 
 ```
-~/opencode-remote/           ← 挂到 /home/opencode（容器主目录）
+~/opencode-remote/           ← 挂到 /data（容器主目录）
 ├── workspace/               # 代码工作区（默认工作目录，把代码放这里）
 ├── .config/opencode/        # OpenCode 配置 + 技能（内置默认值首次启动自动补齐，已有文件不覆盖）
 ├── .local/share/opencode/   # 会话、数据库、日志（自动生成）

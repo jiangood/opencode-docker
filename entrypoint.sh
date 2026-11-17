@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # OpenCode 容器入口：共享后台服务 + OpenTunnel 远程配对（唯一模式）
 # 服务只监听容器内 127.0.0.1，不发布端口，远程访问全部走端到端加密隧道
-# /home/opencode 是唯一挂载点（可被宿主目录整体覆盖），因此二进制(/usr/local/bin/opencode)
+# /data 是唯一挂载点（可被宿主目录整体覆盖），因此二进制(/usr/local/bin/opencode)
 # 与内置默认内容(/opt/opencode)都在主目录之外，启动时合并进主目录：只补缺失，不覆盖用户文件
 set -euo pipefail
 
-home=/home/opencode
+home=/data
 
 # 合并镜像内置默认内容（配置 + 技能 + 容器说明），用户目录里已有的文件一律不动
 install -d -m 700 "${home}/.config/opencode"

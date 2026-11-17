@@ -9,7 +9,7 @@ ARG UIPRO_VERSION=latest
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
-    HOME=/home/opencode \
+    HOME=/data \
     JAVA_HOME=/opt/java \
     MAVEN_HOME=/opt/maven \
     RUSTUP_HOME=/usr/local/rustup \
@@ -19,10 +19,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # 以 root 运行（容器是 opencode 的专用环境，宿主挂载目录无需属主对齐），
 # HOME 指向挂载点，配置/会话/日志全部落在挂载目录里
-# /home/opencode 是容器唯一挂载点（可被宿主目录整体覆盖），
+# /data 是容器唯一挂载点（可被宿主目录整体覆盖），
 # 因此 opencode 二进制与内置默认内容都放在主目录之外（/usr/local/bin、/opt/opencode），
 # 由 entrypoint 启动时合并进主目录：只补缺失，不覆盖用户文件
-WORKDIR /home/opencode
+WORKDIR /data
 
 # 基础工具链 + Python(技能脚本/包管理) + 编译与常用开发工具 + 中文字体(fontconfig 体系)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -147,22 +147,22 @@ RUN set -eux; \
 RUN set -eux; \
     curl -fsSL https://opencode.ai/v2/install -o /tmp/v2-install.sh; \
     env SHELL=/bin/bash bash /tmp/v2-install.sh --no-modify-path; \
-    install -m 755 /home/opencode/.opencode/bin/opencode /usr/local/bin/opencode; \
-    rm -rf /home/opencode/.opencode /tmp/v2-install.sh; \
+    install -m 755 /data/.opencode/bin/opencode /usr/local/bin/opencode; \
+    rm -rf /data/.opencode /tmp/v2-install.sh; \
     opencode --version
 
 # ui-ux-pro-max 技能：从上游 CLI 构建安装（不依赖本机文件），
 # 存 /opt/opencode/skills（主目录之外），由 entrypoint 启动时合并进主目录
 RUN set -eux; \
-    cd /home/opencode; \
+    cd /data; \
     env NPM_CONFIG_CACHE=/tmp/npmcache \
         npx -y "ui-ux-pro-max-cli@${UIPRO_VERSION}" init --ai opencode; \
-    src="$(find /home/opencode -maxdepth 5 -type d -name ui-ux-pro-max | head -n1)"; \
+    src="$(find /data -maxdepth 5 -type d -name ui-ux-pro-max | head -n1)"; \
     test -n "${src}"; \
     install -d -m 755 /opt/opencode/skills; \
     cp -a "${src}" /opt/opencode/skills/ui-ux-pro-max; \
     # 只清理 init 写进主目录的产物，不动其他内容
-    rm -rf /home/opencode/.opencode /home/opencode/.agents /home/opencode/.npm /tmp/npmcache; \
+    rm -rf /data/.opencode /data/.agents /data/.npm /tmp/npmcache; \
     test -f /opt/opencode/skills/ui-ux-pro-max/SKILL.md
 
 # 默认配置（Playwright MCP）：存 /opt/opencode/defaults，由 entrypoint 缺时才合并进主目录
