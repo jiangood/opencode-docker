@@ -7,8 +7,10 @@ OpenCode 2 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（�
 ## 内置能力
 
 | 分类 | 内容 |
-|---|---|
+|---|---|---|
 | 运行时 | OpenCode 2（官方 v2 安装脚本）、Node 22、Java 21 (Temurin)、Python 3、git、gh（GitHub CLI） |
+| 构建与语言工具链 | Maven 3.9、Rust stable（rustup/cargo/rustc/rustfmt/clippy）、`build-essential`/`cmake`/`pkg-config`/`libssl-dev`、`python3-pip`/`python3-venv` |
+| 常用工具 | ripgrep、jq、curl、wget、ssh、unzip/zip/xz、file、vim/nano、tmux、lsof/strace 等 |
 | 远程 | OpenTunnel 端到端加密配对，容器不发布任何端口 |
 | 浏览器 | Playwright MCP + Chromium（headless，`--no-sandbox`），可截图/自动化 |
 | 中文字体 | Noto Sans CJK SC + Noto Color Emoji，构建时用 `fc-match` 断言生效，截图不会出现方块/乱码 |
@@ -95,7 +97,7 @@ docker login ghcr.io -u <用户名>
 
 ```
 opencode-docker/
-├── Dockerfile              # 全部依赖从上游构建（含 Playwright 浏览器、中文字体、ui-ux-pro-max）
+├── Dockerfile              # 全部依赖从上游构建（含 Playwright 浏览器、中文字体、ui-ux-pro-max、开发工具链）
 ├── entrypoint.sh           # 合并内置默认 → 启动共享服务 → 自动远程配对 → 日志保活
 ├── config/
 │   └── opencode.json       # Playwright MCP 配置（构建期存 /opt/opencode/defaults）

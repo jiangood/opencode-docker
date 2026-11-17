@@ -11,8 +11,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     HOME=/home/opencode \
     JAVA_HOME=/opt/java \
+    MAVEN_HOME=/opt/maven \
+    RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
     PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright \
-    PATH=/opt/java/bin:/usr/local/bin:$PATH
+    PATH=/opt/java/bin:/opt/maven/bin:/usr/local/cargo/bin:/usr/local/bin:$PATH
 
 # 以 root 运行（容器是 opencode 的专用环境，宿主挂载目录无需属主对齐），
 # HOME 指向挂载点，配置/会话/日志全部落在挂载目录里
@@ -21,7 +24,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # 由 entrypoint 启动时合并进主目录：只补缺失，不覆盖用户文件
 WORKDIR /home/opencode
 
-# 基础工具链 + Python(技能脚本) + 中文字体(fontconfig 体系)
+# 基础工具链 + Python(技能脚本/包管理) + 编译与常用开发工具 + 中文字体(fontconfig 体系)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         curl \
@@ -33,6 +36,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         less \
         jq \
         python3 \
+        python3-pip \
+        python3-venv \
+        build-essential \
+        pkg-config \
+        cmake \
+        libssl-dev \
+        wget \
+        unzip \
+        zip \
+        xz-utils \
+        file \
+        vim \
+        nano \
+        tmux \
+        lsof \
+        strace \
         fontconfig \
         fonts-noto-cjk \
         fonts-noto-color-emoji \
@@ -68,6 +87,16 @@ RUN set -eux; \
     fc-cache -f >/dev/null 2>&1; \
     fc-match sans-serif:lang=zh-cn | grep -qi "Noto Sans CJK SC"
 
+# 登录 shell（bash -l）会经 /etc/profile 重置 PATH，补上开发工具链路径
+RUN set -eux; \
+    { \
+        echo 'export JAVA_HOME=/opt/java'; \
+        echo 'export MAVEN_HOME=/opt/maven'; \
+        echo 'export RUSTUP_HOME=/usr/local/rustup'; \
+        echo 'export CARGO_HOME=/usr/local/cargo'; \
+        echo 'export PATH="/opt/java/bin:/opt/maven/bin:/usr/local/cargo/bin:$PATH"'; \
+    } > /etc/profile.d/90-opencode-tools.sh
+
 # Java 21 (Eclipse Temurin)，仅支持 amd64
 RUN set -eux; \
     case "${TARGETARCH}" in \
@@ -79,6 +108,30 @@ RUN set -eux; \
     tar -xzf /tmp/jdk.tar.gz -C /opt/java --strip-components=1; \
     rm -f /tmp/jdk.tar.gz; \
     java -version
+
+# Maven（官方 Apache 二进制），仅支持 amd64
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) ;; \
+        *) echo "unsupported arch: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz -o /tmp/maven.tar.gz; \
+    mkdir -p /opt/maven; \
+    tar -xzf /tmp/maven.tar.gz -C /opt/maven --strip-components=1; \
+    rm -f /tmp/maven.tar.gz; \
+    mvn -v
+
+# Rust 工具链（官方 rustup），安装到 /usr/local/rustup 与 /usr/local/cargo（主目录之外）
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) ;; \
+        *) echo "unsupported arch: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+        | sh -s -- -y --profile minimal --default-toolchain stable --component rustfmt,clippy; \
+    chmod -R a+rX /usr/local/rustup /usr/local/cargo; \
+    rustc -V; \
+    cargo -V
 
 # Playwright MCP + 浏览器：用 MCP 自带的 playwright 版本下载匹配的 Chromium
 RUN set -eux; \

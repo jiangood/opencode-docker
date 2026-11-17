@@ -5,7 +5,7 @@
 ## 项目结构
 
 ```
-├── Dockerfile              # 全部依赖从上游构建（含 Playwright 浏览器、中文字体、ui-ux-pro-max）
+├── Dockerfile              # 全部依赖从上游构建（含 Playwright 浏览器、中文字体、ui-ux-pro-max、开发工具链）
 ├── entrypoint.sh           # 合并内置默认 → 启动共享服务 → 自动远程配对 → 日志保活
 ├── config/
 │   └── opencode.json       # Playwright MCP 配置（构建期存 /opt/opencode/defaults，启动时合并进主目录）
