@@ -12,6 +12,8 @@ permissions:
 
 env:
   ALIYUN_PASSWORD: ${{ secrets.ALIYUN_PASSWORD }}
+  # 关闭 buildx 默认 provenance attestation（attestation 是 OCI artifact，阿里云个人版仓库不支持，GHCR 支持）
+  BUILDX_NO_DEFAULT_ATTESTATIONS: "true"
 
 jobs:
   build:
