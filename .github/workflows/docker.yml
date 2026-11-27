@@ -48,13 +48,21 @@ jobs:
           tags: |
             type=raw,value=latest
 
+      # GHCR 与阿里云的标签必须一起推（多行 tags）。早期写法用第二次 echo 覆盖同名输出，
+      # 结果只推了阿里云，GHCR 的 latest 一直停在旧镜像上，需要两个标签都保留。
       - name: 计算镜像标签
         id: tags
         run: |
-          echo "tags=${{ steps.meta.outputs.tags }}" >> "$GITHUB_OUTPUT"
+          tags="${{ steps.meta.outputs.tags }}"
           if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "${ALIYUN_PASSWORD}" ]; then
-            echo "tags=registry.cn-hangzhou.aliyuncs.com/jiangood/opencode-docker:latest" >> "$GITHUB_OUTPUT"
+            tags="${tags}"$'\n'"registry.cn-hangzhou.aliyuncs.com/jiangood/opencode-docker:latest"
           fi
+          {
+            echo 'tags<<EOF'
+            printf '%s\n' "${tags}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          echo "本次推送标签："; printf '%s\n' "${tags}"
 
       - name: Build and push
         uses: docker/build-push-action@v7
