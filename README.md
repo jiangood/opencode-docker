@@ -25,7 +25,7 @@ docker run -d --name opencode --restart unless-stopped \
 
 查看配对链接
 ```
-docker logs -f opencode           
+docker logs -f opencode
 ```
 
 容器首次启动会自动在挂载目录下建好 `workspace`，无需手动创建；宿主目录不存在时 Docker 也会自动创建。
@@ -47,7 +47,7 @@ docker logs -f opencode
 ### 凭据与配对
 
 - **gh/git 凭据（可选）**：按需复制 `~/.config/gh/hosts.yml`、`~/.gitconfig`、`~/.git-credentials` 到挂载目录；或运行时传入 `-e GH_TOKEN="$(gh auth token)"`。
-- **重新配对**：`./scripts/pair.sh`（或 `docker exec opencode-docker-data opencode pair --remote --yes`），链接一次性、5 分钟有效；配对成功后 App 保存配置可长期使用。
+- **重新配对**：`./scripts/pair.sh`（容器名默认 `opencode`，可传参或用 `OPENCODE_CONTAINER` 覆盖）或 `docker exec opencode opencode pair --remote --yes`；链接一次性、5 分钟有效，配对成功后 App 保存配置可长期使用。
 
 ## 常用命令
 
