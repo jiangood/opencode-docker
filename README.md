@@ -68,4 +68,3 @@ docker stop opencode
 
 - 配对流量端到端加密，但服务会暴露到公网；配对链接勿泄露。
 - 仅挂载必要目录，勿挂载宿主敏感路径；`gh`/git 凭据建议使用最小权限 token。
-- 镜像不再内置 Playwright/Chromium（如需浏览器自动化，用 OpenCode 桌面版安装的浏览器插件或自建镜像）。
