@@ -1,6 +1,6 @@
 # 容器环境说明（opencode-docker）
 
-本容器是 OpenCode 2 的 Docker 运行环境，通过 OpenTunnel 远程配对使用（不发布端口，服务仅监听容器内 `127.0.0.1:4096`）。
+本容器是 OpenCode 2 的 Docker 运行环境：默认以前台独立端口服务运行（`opencode serve`，容器内 `0.0.0.0:4096`，由宿主 `-p` 映射访问，密码见启动日志或 `OPENCODE_PASSWORD`）。
 
 ## 目录与挂载
 
@@ -13,6 +13,7 @@
 ## 运行方式
 
 - 以 **root** 身份运行（`HOME=/data`），因此主目录下的配置/凭据路径位于 `/data` 而非 `/root`。
+- 默认进程是前台 `opencode serve`（`0.0.0.0:4096`），服务密码在启动日志里；需要固定密码时用 `OPENCODE_PASSWORD`。
 - 二进制与内置默认资源位于主目录之外，不会被挂载覆盖：`opencode` 在 `/usr/local/bin/opencode`，内置默认配置与技能在 `/opt/opencode/`（启动时按需合并进主目录）。
 
 ## 内置工具链（镜像提供）
@@ -26,4 +27,4 @@
 
 - 需要持久保存的文件应放在 `/data`（挂载点）下，尤其是 `workspace/` 与 `.config/`、`.local/`。
 - 仅将必要的代码与凭据目录挂入容器，避免挂载宿主机敏感目录。
-- 重新生成配对链接：`opencode pair --remote --yes`。
+- 远程配对（可选，手动）：`opencode pair --remote --yes`，链接一次性、5 分钟有效；不执行该命令时容器不暴露公网。

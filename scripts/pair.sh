@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 生成远程配对链接（OpenTunnel，端到端加密，链接一次性、5 分钟过期）
+# 手动生成远程配对链接（OpenTunnel，端到端加密，链接一次性、5 分钟过期）
+# 默认模式是前台 opencode serve，不自动配对；需要外网访问时在宿主执行本脚本
 # 用法: ./scripts/pair.sh [容器名]   # 默认 opencode，也可用环境变量 OPENCODE_CONTAINER 指定
 set -euo pipefail
 cd "$(dirname "$0")/.."

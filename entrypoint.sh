@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# OpenCode 容器入口：共享后台服务 + OpenTunnel 远程配对（唯一模式）
-# 服务只监听容器内 127.0.0.1，不发布端口，远程访问全部走端到端加密隧道
+# OpenCode 容器入口：前台独立端口服务（opencode serve，默认模式）
+# 服务监听容器内 0.0.0.0:4096，由宿主用 -p 映射访问，密码由 opencode 自动生成并打印在日志里
+# 需要 OpenTunnel 远程配对时属可选操作：进入容器手动执行 opencode pair --remote --yes
 # /data 是唯一挂载点（可被宿主目录整体覆盖），因此二进制(/usr/local/bin/opencode)
 # 与内置默认内容(/opt/opencode)都在主目录之外，启动时合并进主目录：只补缺失，不覆盖用户文件
 set -euo pipefail
@@ -40,16 +41,9 @@ fi
 install -d "${home}/workspace"
 cd "${home}/workspace"
 
-echo "启动 OpenCode 共享后台服务 (仅容器内 127.0.0.1:4096，密码自动生成)"
-opencode service set hostname 127.0.0.1
-opencode service set port 4096
-opencode service start
-
+echo "启动 OpenCode 独立端口服务 (foreground, 监听 0.0.0.0:4096)"
+echo "服务密码见下方日志；宿主机访问需用 -p 映射端口（建议 -p 127.0.0.1:4096:4096）"
+echo "需要远程配对时进入容器手动执行: opencode pair --remote --yes"
 echo ""
-echo "生成远程配对链接 (OpenTunnel, 端到端加密, 链接一次性、5 分钟内有效):"
-opencode pair --remote --yes
-
-echo ""
-echo "重新生成配对链接: ./scripts/pair.sh（或 docker exec opencode opencode pair --remote --yes）"
-# 后台服务是 detached 进程，用日志 tail 作为前台保活进程
-exec tail -n 50 -F "${home}/.local/share/opencode/log/opencode.log"
+# 前台独立端口服务：由容器生命周期托管，不再依赖共享后台服务，也不再自动配对
+exec opencode serve --hostname 0.0.0.0 --port 4096

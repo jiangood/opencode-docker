@@ -1,15 +1,15 @@
 # AGENTS.md
 
-本仓库是 OpenCode 2 的 Docker 封装，**只做一件事：OpenTunnel 远程配对**（端到端加密）。镜像由 GitHub Actions 构建推送到 GHCR，本机只负责 `pull` 和运行。
+本仓库是 OpenCode 2 的 Docker 封装：默认以**前台独立端口服务**（`opencode serve`）运行，宿主通过 `-p` 映射 `4096` 端口访问；OpenTunnel 远程配对是**可选的手动操作**（进容器执行 `opencode pair --remote`）。镜像由 GitHub Actions 构建推送到 GHCR，本机只负责 `pull` 和运行。
 
 ## 项目结构
 
 ```
 ├── Dockerfile              # 全部依赖从上游构建（含中文字体、ui-ux-pro-max、开发工具链）
-├── entrypoint.sh           # 合并内置默认 → 启动共享服务 → 自动远程配对 → 日志保活
+├── entrypoint.sh           # 合并内置默认 → 前台启动 opencode serve（0.0.0.0:4096）
 ├── config/
 │   └── opencode.json       # 默认配置（构建期存 /opt/opencode/defaults，启动时合并进主目录）
-└── scripts/pair.sh         # 重新生成配对链接
+└── scripts/pair.sh         # 按需生成远程配对链接（手动、非默认）
 ```
 
 ## 关键不变量（改 Dockerfile 时必须遵守）
@@ -21,8 +21,9 @@
 5. **WORKDIR 是挂载点本身（`/data`）**：宿主目录运行时整体覆盖主目录，WORKDIR 若落在深层路径（如 `.../workspace`）会被宿主目录挂载隐藏。工作区 `workspace/` 由 entrypoint 在主目录内自建。
 6. **以 root 运行**：容器是 opencode 的专用环境（不是通用宿主机），直接 root 运行，宿主挂载目录无需属主对齐；`ENV HOME=/data` 让 root 的主目录指向挂载点，配置/会话/日志全部落在挂载目录里。
 7. **中文字体必须真正生效**：`/etc/fonts/conf.d/99-zh-cn-noto.conf` 为 zh 显式优先 Noto Sans CJK SC，且构建时用 `fc-match sans-serif:lang=zh-cn` 断言匹配结果。改字体相关配置后保留/更新该断言。
-8. **不发布任何端口**：远程访问只走 OpenTunnel 端到端加密隧道，服务只监听容器内 `127.0.0.1:4096`，密码由 opencode 自动生成。
-9. **镜像不内置浏览器**：Playwright/Chromium 已移除（体积太大），浏览器需求由 OpenCode 桌面版安装的浏览器插件承担，不要再往镜像里加。
+8. **默认前台独立端口服务**：entrypoint 用 `exec opencode serve --hostname 0.0.0.0 --port 4096` 前台运行，容器生命周期即服务生命周期；README 默认只映射到宿主 `127.0.0.1:4096`。密码由 opencode 自动生成并打印在日志里，也可用 `OPENCODE_PASSWORD` 固定。
+9. **远程配对不是默认行为**：需要 OpenTunnel 时由用户在容器内手动执行 `opencode pair --remote --yes`（配对连的是共享后台服务，与前台 `serve` 实例独立），不要在 entrypoint 里改回启动即自动配对。
+10. **镜像不内置浏览器**：Playwright/Chromium 已移除（体积太大），浏览器需求由 OpenCode 桌面版安装的浏览器插件承担，不要再往镜像里加。
 
 ## 工作流
 
@@ -32,15 +33,16 @@
 - **镜像构建只走 GitHub Actions，禁止本地 `docker build`**：改动推送后由 CI 构建推送，本地只做**运行验证**（从阿里云拉取镜像后 `docker run` + 下面的检查项）。
 - **运行验证**（容器起来后）：
   ```bash
-  docker logs -f opencode-remote                                  # 启动日志里有配对链接
+  docker logs -f opencode-remote                                  # 监听地址与随机密码
+  curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4096/api/info  # 期望 401（服务在跑、需认证）
   docker exec opencode-remote opencode --version                  # OpenCode 版本
   docker exec opencode-remote mvn -v | head -2                    # Maven
   docker exec opencode-remote fc-match sans-serif:lang=zh-cn     # 中文字体
-  ./scripts/pair.sh                                               # 重新生成配对链接（一次性、5 分钟有效）
+  ./scripts/pair.sh                                               # 可选：手动生成配对链接（一次性、5 分钟有效）
   ```
 
 ## 约定
 
 - 文档、注释、commit 说明都用**中文**；commit 用 Conventional Commits（type 英文，主题中文，≤50 字）。
 - 镜像地址里的 `OWNER` 是占位符，README 引导用户自行替换，不要写死具体用户名。
-- 健康检查走 `opencode api GET /api/info`（v2 CLI 自动发现认证），不要改成依赖已知密码的方式。
+- 健康检查走 `bash -c 'exec 3<>/dev/tcp/127.0.0.1/4096'` 端口探活：`serve` 是前台进程，用 `opencode api` 探活会去自动发现/拉起共享后台服务，多起一个进程且密码未知，不要改回去。
