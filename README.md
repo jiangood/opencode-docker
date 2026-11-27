@@ -17,19 +17,17 @@ OpenCode 2 的 Docker 封装，仅做 **OpenTunnel 远程配对**（端到端加
 容器以 root 运行，`/data` 为唯一挂载点（代码、配置、凭据、会话数据均在其中）。
 
 ```bash
-mkdir -p ~/opencode-remote/workspace
+docker run -d --name opencode --restart unless-stopped \
+  -v ~/opencode-docker-data:/data \
+  ghcr.io/jiangood/opencode-docker:latest   # OWNER 替换为你的 GitHub 用户名/组织
 
-docker run -d --name opencode-remote --restart unless-stopped \
-  -v ~/opencode-remote:/data \
-  ghcr.io/OWNER/opencode-docker:latest   # OWNER 替换为你的 GitHub 用户名/组织
-
-docker logs -f opencode-remote           # 查看配对链接
+docker logs -f opencode           # 查看配对链接
 ```
 
 挂载目录结构（缺失的默认配置/技能首次启动自动补齐，不覆盖已有文件）：
 
 ```text
-~/opencode-remote/
+~/opencode-docker-data/
 ├── workspace/                 # 代码工作区（默认工作目录）
 ├── .config/opencode/          # OpenCode 配置与技能
 ├── .local/share/opencode/     # 会话、数据库、日志
@@ -43,18 +41,18 @@ docker logs -f opencode-remote           # 查看配对链接
 ### 凭据与配对
 
 - **gh/git 凭据（可选）**：按需复制 `~/.config/gh/hosts.yml`、`~/.gitconfig`、`~/.git-credentials` 到挂载目录；或运行时传入 `-e GH_TOKEN="$(gh auth token)"`。
-- **重新配对**：`./scripts/pair.sh`（或 `docker exec opencode-remote opencode pair --remote --yes`），链接一次性、5 分钟有效；配对成功后 App 保存配置可长期使用。
+- **重新配对**：`./scripts/pair.sh`（或 `docker exec opencode-docker-data opencode pair --remote --yes`），链接一次性、5 分钟有效；配对成功后 App 保存配置可长期使用。
 
 ## 常用命令
 
 ```bash
-docker exec -it opencode-remote bash
-docker exec opencode-remote opencode service status
-docker exec opencode-remote opencode --version
-docker exec opencode-remote mvn -v | head -2
-docker exec opencode-remote playwright-mcp --help | head -5
-docker exec opencode-remote fc-match sans-serif:lang=zh-cn
-docker stop opencode-remote
+docker exec -it opencode bash
+docker exec opencode opencode service status
+docker exec opencode opencode --version
+docker exec opencode mvn -v | head -2
+docker exec opencode playwright-mcp --help | head -5
+docker exec opencode fc-match sans-serif:lang=zh-cn
+docker stop opencode
 ```
 
 ## 构建与仓库结构
