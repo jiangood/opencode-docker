@@ -21,7 +21,12 @@ docker run -d --name opencode --restart unless-stopped \
   -v /home/opencode-docker-data:/data \
   ghcr.io/jiangood/opencode-docker:latest 
 
-docker logs -f opencode           # 查看配对链接
+
+```
+
+查看配对链接
+```
+docker logs -f opencode           
 ```
 
 挂载目录结构（缺失的默认配置/技能首次启动自动补齐，不覆盖已有文件）：
