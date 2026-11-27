@@ -31,6 +31,11 @@ if [ ! -e "${home}/.config/opencode/skills/ui-ux-pro-max" ]; then
     cp -a /opt/opencode/skills/ui-ux-pro-max "${home}/.config/opencode/skills/"
 fi
 
+# 升级提示：旧配置里若还声明了 Playwright MCP，本镜像已不再提供 playwright-mcp 可执行文件
+if grep -qs 'playwright' "${home}/.config/opencode/opencode.json"; then
+    echo "提示: 现有 opencode.json 仍引用 playwright MCP，但镜像已移除 Playwright/Chromium，可删除该 mcp 配置项" >&2
+fi
+
 # 工作区在主目录内自建；WORKDIR 就是挂载点本身
 install -d "${home}/workspace"
 cd "${home}/workspace"

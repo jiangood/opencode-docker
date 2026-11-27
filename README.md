@@ -9,7 +9,6 @@ OpenCode 2 的 Docker 封装，仅做 **OpenTunnel 远程配对**（端到端加
 | 运行时 | OpenCode 2、Node 22、Java 21 (Temurin)、Python 3、git、gh |
 | 构建工具 | Maven 3.9、`build-essential`/`cmake`/`pkg-config`/`libssl-dev`、`python3-pip`/`python3-venv` |
 | 常用工具 | ripgrep、jq、curl、wget、ssh、unzip/zip/xz、file、vim/nano、tmux、lsof/strace |
-| 浏览器 | Playwright MCP + Chromium（headless，`--no-sandbox`） |
 | 其他 | Noto CJK/Emoji 中文字体、[ui-ux-pro-max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) 技能 |
 
 ## 快速开始
@@ -56,7 +55,6 @@ docker exec -it opencode bash
 docker exec opencode opencode service status
 docker exec opencode opencode --version
 docker exec opencode mvn -v | head -2
-docker exec opencode playwright-mcp --help | head -5
 docker exec opencode fc-match sans-serif:lang=zh-cn
 docker stop opencode
 ```
@@ -70,4 +68,4 @@ docker stop opencode
 
 - 配对流量端到端加密，但服务会暴露到公网；配对链接勿泄露。
 - 仅挂载必要目录，勿挂载宿主敏感路径；`gh`/git 凭据建议使用最小权限 token。
-- Playwright 以 `--no-sandbox` 运行，仅访问可信站点。
+- 镜像不再内置 Playwright/Chromium（如需浏览器自动化，用 OpenCode 桌面版安装的浏览器插件或自建镜像）。
