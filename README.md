@@ -21,6 +21,12 @@ docker run -d --name opencode --restart unless-stopped \
   ghcr.io/jiangood/opencode-docker:latest
 
 ```
+国内镜像
+```
+docker run -d --name opencode --restart unless-stopped \
+  -v /home/opencode-docker-data:/data \
+  registry.cn-hangzhou.aliyuncs.com/jiangood/opencode-docker:latest
+```
 
 查看配对链接
 ```
