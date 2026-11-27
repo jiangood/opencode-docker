@@ -18,8 +18,8 @@ OpenCode 2 的 Docker 封装，仅做 **OpenTunnel 远程配对**（端到端加
 
 ```bash
 docker run -d --name opencode --restart unless-stopped \
-  -v ~/opencode-docker-data:/data \
-  ghcr.io/jiangood/opencode-docker:latest   # OWNER 替换为你的 GitHub 用户名/组织
+  -v /home/opencode-docker-data:/data \
+  ghcr.io/jiangood/opencode-docker:latest 
 
 docker logs -f opencode           # 查看配对链接
 ```
@@ -27,7 +27,7 @@ docker logs -f opencode           # 查看配对链接
 挂载目录结构（缺失的默认配置/技能首次启动自动补齐，不覆盖已有文件）：
 
 ```text
-~/opencode-docker-data/
+/home/opencode-docker-data/
 ├── workspace/                 # 代码工作区（默认工作目录）
 ├── .config/opencode/          # OpenCode 配置与技能
 ├── .local/share/opencode/     # 会话、数据库、日志
