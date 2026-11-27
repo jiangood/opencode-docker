@@ -21,7 +21,7 @@
 5. **WORKDIR 是挂载点本身（`/data`）**：宿主目录运行时整体覆盖主目录，WORKDIR 若落在深层路径（如 `.../workspace`）会被宿主目录挂载隐藏。工作区 `workspace/` 由 entrypoint 在主目录内自建。
 6. **以 root 运行**：容器是 opencode 的专用环境（不是通用宿主机），直接 root 运行，宿主挂载目录无需属主对齐；`ENV HOME=/data` 让 root 的主目录指向挂载点，配置/会话/日志全部落在挂载目录里。
 7. **中文字体必须真正生效**：`/etc/fonts/conf.d/99-zh-cn-noto.conf` 为 zh 显式优先 Noto Sans CJK SC，且构建时用 `fc-match sans-serif:lang=zh-cn` 断言匹配结果。改字体相关配置后保留/更新该断言。
-8. **默认前台独立端口服务**：entrypoint 用 `exec opencode serve --hostname 0.0.0.0 --port 4096` 前台运行，容器生命周期即服务生命周期；README 默认只映射到宿主 `127.0.0.1:4096`。密码由 opencode 自动生成并打印在日志里，也可用 `OPENCODE_PASSWORD` 固定。
+8. **默认前台独立端口服务**：entrypoint 用 `exec opencode serve --hostname 0.0.0.0 --port 4096` 前台运行，容器生命周期即服务生命周期；README 默认只映射到宿主 `127.0.0.1:4096`。密码优先取 `OPENCODE_PASSWORD`（兼容 `OPENCODE_SERVER_PASSWORD`）；未设置时 entrypoint 在 `/data/.config/opencode/server-password` 生成并复用随机密码（权限 600），保证重建容器后密码不变，启动时再导出给 `opencode serve`。
 9. **远程配对不是默认行为**：需要 OpenTunnel 时由用户在容器内手动执行 `opencode pair --remote --yes`（配对连的是共享后台服务，与前台 `serve` 实例独立），不要在 entrypoint 里改回启动即自动配对。
 10. **镜像不内置浏览器**：Playwright/Chromium 已移除（体积太大），浏览器需求由 OpenCode 桌面版安装的浏览器插件承担，不要再往镜像里加。
 

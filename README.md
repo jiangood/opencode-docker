@@ -39,13 +39,18 @@ docker run -d --name opencode --restart unless-stopped \
 docker logs -f opencode
 ```
 
-日志里会打印 `server listening on http://0.0.0.0:4096` 和 `server password <随机密码>`。
+日志里会打印 `server listening on http://0.0.0.0:4096` 和 `服务密码: <密码>（来源: ...）`。
+
+密码规则（按优先级）：
+
+1. **环境变量**：`docker run` 时加 `-e OPENCODE_PASSWORD="一个足够长的密码"`，CLI 客户端也读同一个变量。
+2. **持久化文件**：未设置环境变量时，首次启动生成随机密码并保存到挂载目录的 `.config/opencode/server-password`（权限 `600`），之后重建、更新容器都会复用，不再变化。可在宿主执行 `cat /home/opencode-docker-data/.config/opencode/server-password` 查看。
+3. **重置密码**：删除该文件后重启容器会重新生成；或直接设置 `OPENCODE_PASSWORD` 覆盖（此时不再使用文件）。
 
 连接服务
 
-- 浏览器打开 `http://127.0.0.1:4096`，HTTP Basic 认证，用户名固定 `opencode`，密码用日志里的随机值。
-- CLI 客户端：`opencode --server http://127.0.0.1:4096`。
-- 想固定密码：`docker run` 时加 `-e OPENCODE_PASSWORD="一个足够长的密码"`，此时 CLI 也读同一个环境变量。
+- 浏览器打开 `http://127.0.0.1:4096`，HTTP Basic 认证，用户名固定 `opencode`，密码为启动日志或 `server-password` 文件里的值。
+- CLI 客户端：`OPENCODE_PASSWORD="<密码>" opencode --server http://127.0.0.1:4096`。
 
 容器首次启动会自动在挂载目录下建好 `workspace`，无需手动创建；宿主目录不存在时 Docker 也会自动创建。
 
@@ -54,7 +59,7 @@ docker logs -f opencode
 ```text
 /home/opencode-docker-data/
 ├── workspace/                 # 代码工作区（默认工作目录，镜像自动创建）
-├── .config/opencode/          # OpenCode 配置与技能
+├── .config/opencode/          # OpenCode 配置、技能与服务密码（server-password）
 ├── .local/share/opencode/     # 会话、数据库、日志
 ├── .config/gh/hosts.yml       # 可选：gh 凭据
 ├── .gitconfig                 # 可选：git 身份
@@ -98,6 +103,7 @@ docker stop opencode
 
 ## 安全提示
 
-- 默认端口映射建议只绑 `127.0.0.1`；对公网暴露端口务必设置 `OPENCODE_PASSWORD` 并配合防火墙。
+- 默认端口映射建议只绑 `127.0.0.1`；用 `-p 4096:4096` 会暴露到所有网卡，请配合防火墙，必要时改用 SSH 隧道或 TLS 反向代理。
+- 服务本身已有密码保护：优先 `OPENCODE_PASSWORD`，否则使用挂载目录里持久化的随机密码。但 HTTP Basic 在明文 HTTP 下可被嗅探，公网暴露不要只依赖密码。
 - 远程配对流量端到端加密，但服务会暴露到公网；配对链接勿泄露。
 - 仅挂载必要目录，勿挂载宿主敏感路径；`gh`/git 凭据建议使用最小权限 token。

@@ -13,7 +13,7 @@
 ## 运行方式
 
 - 以 **root** 身份运行（`HOME=/data`），因此主目录下的配置/凭据路径位于 `/data` 而非 `/root`。
-- 默认进程是前台 `opencode serve`（`0.0.0.0:4096`），服务密码在启动日志里；需要固定密码时用 `OPENCODE_PASSWORD`。
+- 默认进程是前台 `opencode serve`（`0.0.0.0:4096`）。密码优先取 `OPENCODE_PASSWORD`；未设置时使用挂载目录里持久化的随机密码 `.config/opencode/server-password`（重建容器不变），启动日志也会打印当前密码。
 - 二进制与内置默认资源位于主目录之外，不会被挂载覆盖：`opencode` 在 `/usr/local/bin/opencode`，内置默认配置与技能在 `/opt/opencode/`（启动时按需合并进主目录）。
 
 ## 内置工具链（镜像提供）
