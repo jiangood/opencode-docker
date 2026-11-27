@@ -1,4 +1,4 @@
-# OpenCode 独立端口服务容器 —— 由 GitHub Actions 构建并推送到 GHCR
+# OpenCode 共享服务容器 —— 由 GitHub Actions 构建并推送到 GHCR
 # 文档: https://opencode.ai/docs/cli/web/ (OpenCode 2)
 FROM node:22-bookworm-slim
 
@@ -145,7 +145,7 @@ COPY config/ /opt/opencode/defaults/
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod 755 /usr/local/bin/entrypoint.sh
 
-# 健康检查：只探端口存活（serve 是前台进程，密码持久化在 /data，不写进镜像）
+# 健康检查：只探端口存活（serve --service 是前台进程，密码持久化在 /data，不写进镜像）
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD bash -c 'exec 3<>/dev/tcp/127.0.0.1/4096'
 

@@ -1,6 +1,6 @@
 # opencode-docker
 
-OpenCode 2 的 Docker 封装，默认以 **前台独立端口服务**（`opencode serve`）运行，宿主通过 `-p` 映射 `4096` 端口访问；需要远程访问时再进入容器手动开启 OpenTunnel 配对（端到端加密）。镜像由 GitHub Actions 构建并推送，本机只需拉取运行。
+OpenCode 2 的 Docker 封装，默认以 **共享服务模式**（前台 `opencode serve --service`）运行：这个前台进程本身就是 OpenCode 的共享后台服务，容器内的 TUI / `opencode pair` / `opencode api` 会自动复用它；宿主通过 `-p` 映射 `4096` 端口访问；需要外网时再进入容器手动开启 OpenTunnel 配对（端到端加密）。镜像由 GitHub Actions 构建并推送，本机只需拉取运行。
 
 ## 内置能力
 
@@ -13,7 +13,7 @@ OpenCode 2 的 Docker 封装，默认以 **前台独立端口服务**（`opencod
 
 ## 快速开始
 
-容器以 root 运行，`/data` 为唯一挂载点（代码、配置、凭据、会话数据均在其中），服务以 `opencode serve` 前台监听容器内 `0.0.0.0:4096`。
+容器以 root 运行，`/data` 为唯一挂载点（代码、配置、凭据、会话数据均在其中），服务以 `opencode serve --service` 前台监听容器内 `0.0.0.0:4096`，并把自己注册为 OpenCode 的共享服务（注册信息在 `/data/.local/state/opencode/service.json`）。
 
 ```bash
 docker run -d --name opencode --restart unless-stopped \
@@ -47,6 +47,8 @@ docker logs -f opencode
 2. **持久化文件**：未设置环境变量时，首次启动生成随机密码并保存到挂载目录的 `.config/opencode/server-password`（权限 `600`），之后重建、更新容器都会复用，不再变化。可在宿主执行 `cat /home/opencode-docker-data/.config/opencode/server-password` 查看。
 3. **重置密码**：删除该文件后重启容器会重新生成；或直接设置 `OPENCODE_PASSWORD` 覆盖（此时不再使用文件）。
 
+> 共享服务模式下，服务进程的密码/地址取自 `.config/opencode/service.json`（权限 `600`），该文件由 entrypoint 在每次启动时用上面的密码改写（`hostname=0.0.0.0`、`port=4096`），请不要手动改它来换密码，以上面的环境变量或 `server-password` 文件为准。
+
 连接服务
 
 - 浏览器打开 `http://127.0.0.1:4096`，HTTP Basic 认证，用户名固定 `opencode`，密码为启动日志或 `server-password` 文件里的值。
@@ -79,7 +81,11 @@ opencode pair --remote --yes
 
 也可在宿主直接执行 `./scripts/pair.sh`（等价于 `docker exec opencode opencode pair --remote --yes`）。链接一次性、5 分钟内有效，手机 App 扫码或粘贴后会在本地保存配置，可长期使用。
 
-> 配对连接的是 OpenCode 的**共享后台服务**：容器内没有该服务时会自动拉起一个（默认 `49374` 端口），与前台 `serve`（4096）并存并共用 `/data` 数据目录。如果要长期只走隧道，建议改回共享服务模式而不是两个实例同时跑。
+> `opencode pair` 连接的就是容器内正在运行的**共享服务**（同一个进程，即 `serve --service` 监听的 4096），不会再额外拉起第二个实例，也不会出现端口冲突；配对后直连端口和隧道指向同一份会话数据。可用 `docker exec opencode opencode service status` 确认服务地址。
+>
+> 不带 `--remote` 的本地配对链接会列出容器内可用的地址（如 `127.0.0.1:4096`、容器 IP）；从宿主或其他机器访问时可加 `--url http://<宿主地址>:4096` 指定链接中的服务地址。
+
+旧镜像或手工改过 `.config/opencode/service.json` 时，配对可能报 `Managed service port 4096 ... already in use by another process`：说明旧配置把共享服务端口定成了 4096，与前台服务冲突。新版 entrypoint 启动时会把 `hostname/port/password` 重新同步为 `0.0.0.0/4096/当前密码`；临时处理可删除该文件后重启容器。
 
 ### 凭据
 
@@ -95,6 +101,8 @@ docker exec opencode mvn -v | head -2
 docker exec opencode fc-match sans-serif:lang=zh-cn
 docker stop opencode
 ```
+
+> 共享服务就是容器的主进程：不要在运行中的容器里执行 `opencode service stop/restart/set ...`，这些命令会停掉服务并导致容器退出。需要换地址或密码时，改 `OPENCODE_PASSWORD`（或 `server-password` 文件）后重启容器，由 entrypoint 重新同步配置。
 
 ## 构建与仓库结构
 

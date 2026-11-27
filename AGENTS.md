@@ -1,12 +1,12 @@
 # AGENTS.md
 
-本仓库是 OpenCode 2 的 Docker 封装：默认以**前台独立端口服务**（`opencode serve`）运行，宿主通过 `-p` 映射 `4096` 端口访问；OpenTunnel 远程配对是**可选的手动操作**（进容器执行 `opencode pair --remote`）。镜像由 GitHub Actions 构建推送到 GHCR，本机只负责 `pull` 和运行。
+本仓库是 OpenCode 2 的 Docker 封装：默认以**共享服务模式**（前台 `opencode serve --service`）运行，宿主通过 `-p` 映射 `4096` 端口访问；这个前台进程同时是 OpenCode 的共享后台服务，容器内 TUI / `pair` / `api` 直接复用，不会再另起实例。OpenTunnel 远程配对是**可选的手动操作**（进容器执行 `opencode pair --remote`）。镜像由 GitHub Actions 构建推送到 GHCR，本机只负责 `pull` 和运行。
 
 ## 项目结构
 
 ```
 ├── Dockerfile              # 全部依赖从上游构建（含中文字体、ui-ux-pro-max、开发工具链）
-├── entrypoint.sh           # 合并内置默认 → 前台启动 opencode serve（0.0.0.0:4096）
+├── entrypoint.sh           # 合并内置默认 → 前台启动 opencode serve --service（0.0.0.0:4096）
 ├── config/
 │   └── opencode.json       # 默认配置（构建期存 /opt/opencode/defaults，启动时合并进主目录）
 └── scripts/pair.sh         # 按需生成远程配对链接（手动、非默认）
@@ -21,8 +21,11 @@
 5. **WORKDIR 是挂载点本身（`/data`）**：宿主目录运行时整体覆盖主目录，WORKDIR 若落在深层路径（如 `.../workspace`）会被宿主目录挂载隐藏。工作区 `workspace/` 由 entrypoint 在主目录内自建。
 6. **以 root 运行**：容器是 opencode 的专用环境（不是通用宿主机），直接 root 运行，宿主挂载目录无需属主对齐；`ENV HOME=/data` 让 root 的主目录指向挂载点，配置/会话/日志全部落在挂载目录里。
 7. **中文字体必须真正生效**：`/etc/fonts/conf.d/99-zh-cn-noto.conf` 为 zh 显式优先 Noto Sans CJK SC，且构建时用 `fc-match sans-serif:lang=zh-cn` 断言匹配结果。改字体相关配置后保留/更新该断言。
-8. **默认前台独立端口服务**：entrypoint 用 `exec opencode serve --hostname 0.0.0.0 --port 4096` 前台运行，容器生命周期即服务生命周期；README 默认只映射到宿主 `127.0.0.1:4096`。密码优先取 `OPENCODE_PASSWORD`（兼容 `OPENCODE_SERVER_PASSWORD`）；未设置时 entrypoint 在 `/data/.config/opencode/server-password` 生成并复用随机密码（权限 600），保证重建容器后密码不变，启动时再导出给 `opencode serve`。
-9. **远程配对不是默认行为**：需要 OpenTunnel 时由用户在容器内手动执行 `opencode pair --remote --yes`（配对连的是共享后台服务，与前台 `serve` 实例独立），不要在 entrypoint 里改回启动即自动配对。
+8. **默认前台共享服务模式**：entrypoint 用 `exec opencode serve --service --hostname 0.0.0.0 --port 4096` 前台运行，容器生命周期即服务生命周期；该进程同时注册为 OpenCode 的共享后台服务（`~/.local/state/opencode/service.json`），容器内的 TUI / `pair` / `api` 自动复用，不会再另起默认 49374 端口的实例。README 默认只映射到宿主 `127.0.0.1:4096`。
+   - 服务进程的地址和密码取自 `/data/.config/opencode/service.json`（不读 `OPENCODE_PASSWORD`），所以 entrypoint 启动前用 `opencode service set hostname/port/password` 显式同步，否则 `serve --service` 会退回 127.0.0.1:49374 并自行生成密码，导致端口映射失效、日志密码与实际不符。
+   - 密码优先取 `OPENCODE_PASSWORD`（兼容 `OPENCODE_SERVER_PASSWORD`）；未设置时 entrypoint 在 `/data/.config/opencode/server-password` 生成并复用随机密码（权限 600），保证重建容器后密码不变。`service.json` 每次启动由这三项设置改写（权限 600），不要当作用户可编辑的密码来源。
+   - 启动时必须先删除遗留的运行时注册 `/data/.local/state/opencode/service.json`：`docker rm -f`/升级重建时服务没机会清理，文件里记录的 pid 常是旧容器的 `1`，在新容器里 `1` 就是 entrypoint 自己，会让 `opencode service set` 误判服务仍在运行并失败退出。该文件只是运行时注册，服务启动后会重建。
+9. **远程配对不是默认行为**：需要 OpenTunnel 时由用户在容器内手动执行 `opencode pair --remote --yes`，配对连的就是上面这个共享服务实例（同一份会话数据，不再另起进程），不要在 entrypoint 里改回启动即自动配对。注意 `opencode service set ...` 会停止正在运行的服务（即容器主进程），用户文档里要避免引导用户在运行中的容器内改服务配置。
 10. **镜像不内置浏览器**：Playwright/Chromium 已移除（体积太大），浏览器需求由 OpenCode 桌面版安装的浏览器插件承担，不要再往镜像里加。
 
 ## 工作流
@@ -35,6 +38,7 @@
   ```bash
   docker logs -f opencode-remote                                  # 监听地址与随机密码
   curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4096/api/info  # 期望 401（服务在跑、需认证）
+  docker exec opencode-remote opencode service status             # 期望 http://0.0.0.0:4096（共享服务已注册）
   docker exec opencode-remote opencode --version                  # OpenCode 版本
   docker exec opencode-remote mvn -v | head -2                    # Maven
   docker exec opencode-remote fc-match sans-serif:lang=zh-cn     # 中文字体
@@ -45,4 +49,4 @@
 
 - 文档、注释、commit 说明都用**中文**；commit 用 Conventional Commits（type 英文，主题中文，≤50 字）。
 - 镜像地址里的 `OWNER` 是占位符，README 引导用户自行替换，不要写死具体用户名。
-- 健康检查走 `bash -c 'exec 3<>/dev/tcp/127.0.0.1/4096'` 端口探活：`serve` 是前台进程，用 `opencode api` 探活会去自动发现/拉起共享后台服务，多起一个进程且密码未知，不要改回去。
+- 健康检查走 `bash -c 'exec 3<>/dev/tcp/127.0.0.1/4096'` 端口探活：`serve --service` 是前台进程，端口探活最轻量且不需要密码；不要改成 `opencode api`/`service status` 之类会触发客户端发现逻辑的命令。

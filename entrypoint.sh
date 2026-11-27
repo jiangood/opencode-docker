@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# OpenCode 容器入口：前台独立端口服务（opencode serve，默认模式）
+# OpenCode 容器入口：共享服务模式（前台 opencode serve --service，默认模式）
+# 进程本身就是 OpenCode 的共享后台服务：容器内的 TUI / pair / api 会自动复用它，
+# 不会再另起一个默认监听 127.0.0.1:49374 的后台实例（避免两个实例共用同一数据库）
 # 服务监听容器内 0.0.0.0:4096，由宿主用 -p 映射访问；密码优先取 OPENCODE_PASSWORD，
 # 否则在挂载目录持久化随机密码（/data/.config/opencode/server-password），重建容器不变
 # 需要 OpenTunnel 远程配对时属可选操作：进入容器手动执行 opencode pair --remote --yes
@@ -24,7 +26,7 @@ if [ ! -f "${home}/.config/opencode/opencode.json" ]; then
 fi
 
 # 服务密码：OPENCODE_PASSWORD 优先；未设置时在挂载目录生成并复用，保证重建/更新容器后密码不变。
-# opencode serve 只接受环境变量形式的密码，因此密码文件仅用于持久化，启动时再导出给服务。
+# 共享服务模式下密码要写进 service.json 才生效，server-password 文件只负责跨容器持久化。
 password_file="${home}/.config/opencode/server-password"
 if [ -n "${OPENCODE_PASSWORD:-}" ]; then
     password_source="环境变量 OPENCODE_PASSWORD"
@@ -42,6 +44,20 @@ else
     export OPENCODE_PASSWORD
     password_source="已生成并保存到 ${password_file}"
 fi
+
+# 干净启动：清掉上次容器被强制删除（docker rm -f / 升级重建）时遗留的服务注册。
+# 注册文件里记录的 pid 通常是旧容器的 1，而在新容器里 1 恰好就是本 entrypoint 自己，
+# 会让下面的 opencode service set 误判“服务仍在运行”并报错退出（Server process 1 is still running）。
+# 该文件只是运行时注册信息，服务启动后会重新写入，删除是安全的。
+rm -f "${home}/.local/state/opencode/service.json"
+
+# 共享服务配置：服务进程的 hostname/port/password 取自 service.json（不读 OPENCODE_PASSWORD），
+# 因此启动前必须显式同步；写入持久化配置后，用户手动 opencode service restart 也不会退回默认的
+# 127.0.0.1:49374，端口映射继续有效。service.json 权限为 600，密码与上面的来源保持一致。
+opencode service set hostname 0.0.0.0 >/dev/null
+opencode service set port 4096 >/dev/null
+opencode service set password "${OPENCODE_PASSWORD}" >/dev/null
+
 if [ -f /opt/opencode/defaults/AGENTS.md ] && [ ! -f "${home}/.config/opencode/AGENTS.md" ]; then
     install -m 644 /opt/opencode/defaults/AGENTS.md "${home}/.config/opencode/AGENTS.md"
 fi
@@ -62,10 +78,12 @@ fi
 install -d "${home}/workspace"
 cd "${home}/workspace"
 
-echo "启动 OpenCode 独立端口服务 (foreground, 监听 0.0.0.0:4096)"
+echo "启动 OpenCode 共享服务 (foreground: serve --service, 监听 0.0.0.0:4096)"
 echo "宿主机访问需用 -p 映射端口（建议 -p 127.0.0.1:4096:4096），HTTP Basic 用户名固定 opencode"
 echo "服务密码: ${OPENCODE_PASSWORD}（来源: ${password_source}）"
+echo "容器内 TUI / pair / api 会自动复用该服务（不再另起 49374 端口的后台实例）"
 echo "需要远程配对时进入容器手动执行: opencode pair --remote --yes"
 echo ""
-# 前台独立端口服务：由容器生命周期托管，不再依赖共享后台服务，也不再自动配对
-exec opencode serve --hostname 0.0.0.0 --port 4096
+# 共享服务模式：该前台进程同时注册为 OpenCode 的共享后台服务，由容器生命周期托管；
+# 远程配对仍不自动开启，需要外网访问时手动执行 opencode pair --remote --yes
+exec opencode serve --service --hostname 0.0.0.0 --port 4096
